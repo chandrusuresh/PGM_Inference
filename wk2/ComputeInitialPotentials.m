@@ -20,6 +20,23 @@
 
 function P = ComputeInitialPotentials(C)
 
+% % % CreateCliqueTree function in Submission script does not include the 
+% % % field for cardinality. Include the following to fix the bug
+if ~isfield(C,'card')
+    V = unique([C.factorList(:).var]);
+    % Setting up the cardinality for the variables since we only get a list 
+    % of factors.
+    C.card = zeros(1, length(V));
+    for i = 1 : length(V),
+         for j = 1 : length(C.factorList)
+              if (~isempty(find(C.factorList(j).var == i)))
+                    C.card(i) = C.factorList(j).card(find(C.factorList(j).var == i));
+                    break;
+              end
+         end
+    end
+end
+
 % number of cliques
 N = length(C.nodes);
 
@@ -42,93 +59,52 @@ P.edges = zeros(N);
 P.edges = C.edges;
 C.factorList = incSortFactor(C.factorList);
 
-% % CliqueFactors = AssignFactors2Cliques(C.nodes,C.factorList);
-% usedFactors = [];
-% usedFactors1 = cell(1,N);
-% assigned = [];
-% for i = 1:N
-%     for j = 1:length(C.factorList)
-%         if length(intersect(C.nodes{i},C.factorList(j).var)) == length(C.factorList(j).var)
-%             if ismember(j,usedFactors)
-%                 continue;
-%             end        
-%             if isempty(P.cliqueList(i).val)
-%                 P.cliqueList(i) = C.factorList(j);
-%             else
-%                 P.cliqueList(i) = FactorProduct(P.cliqueList(i),C.factorList(j));
-%             end
-%             usedFactors = [usedFactors,j];
-%             usedFactors1{i} = [usedFactors1{i},j];
-%         end
-%     end
-% end
-factors = C.factorList;
-nodes = C.nodes;
-[nodeAdj,factorAdj] = varConnectivity(nodes,factors);
-varCountInNode = sum(nodeAdj,2);
-sortedSum = unique(sort(varCountInNode));
-if sortedSum(1) == 0
-    minVal = sortedSum(2);
-else
-    minVal = sortedSum(1);
-end
-ind = find(varCountInNode == minVal);
-while max(sum(nodeAdj,2)) > 0
-    varNum = ind(1);
-    factorInd = find(factorAdj(varNum,:));
-    nodeInd = find(nodeAdj(varNum,:));
-    nodeNum = nodeInd(1);
-    totalFactorVars = -1;
-    maxFactorVarsInd = -1;
-    for i = 1:length(factorInd)
-        totalVars = intersect(factors(factorInd(i)).var,nodes{nodeNum});
-        if length(totalVars) > totalFactorVars
-            totalFactorVars = length(totalVars);
-            maxFactorVarsInd = i;
-        end
-    end
-    if maxFactorVarsInd > 0
-        if isempty(P.cliqueList(nodeNum).val)
-            P.cliqueList(nodeNum) = factors(factorInd(maxFactorVarsInd));
-        else
-            P.cliqueList(nodeNum) = FactorProduct(P.cliqueList(nodeNum),factors(factorInd(maxFactorVarsInd)));
-        end
-        nodeAdj(factors(factorInd(maxFactorVarsInd)).var,nodeNum) = 0;
-        factorAdj(:,factorInd(maxFactorVarsInd)) = 0;
-    else
-        P.cliqueList(nodeNum).var = nodes{nodeNum}';
-        for k1 = 1:length(nodes{nodeNum})
-            P.cliqueList(nodeNum).card(k1) = C.card(nodes{nodeNum}(k1));
-        end
-        P.cliqueList(nodeNum).val = ones(1,prod(P.cliqueList(nodeNum).card));        
-        nodeAdj(P.cliqueList(nodeNum).var,nodeNum) = 0;
-    end
-    varCountInNode = sum(nodeAdj,2);
-    sortedSum = unique(sort(varCountInNode));
-    if sortedSum(1) == 0 && length(sortedSum) > 1
-        minVal = sortedSum(2);
-    else
-        minVal = sortedSum(1);
-    end
-    ind(1) = [];
-    ind1 = find(varCountInNode == minVal);
-    intInd = intersect(ind,ind1,'stable');
-    diffInd = setdiff(ind1,ind);
-    ind = [reshape(intInd,[1,length(intInd)]),reshape(diffInd,[1,length(diffInd)])];
+%% Assign factors to cliques starting from leaves (least connected) to root (most connected)
+nodesConsidered = [];
+factors2Nodes = cell(1,length(C.nodes));
+edges = C.edges;
+newF = C.factorList;
+removedFactors = [];
+nodesNotConsidered = C.nodes;
+for k = 1:length(C.nodes)
+	 bestNode = 0;
+	 bestScore = inf;
+	 for i=1:size(edges,1)
+		  score = sum(edges(i,:));
+		  if score > 0 && score < bestScore
+				bestScore = score;
+				bestNode = i;
+		  end
+     end
+     if bestNode == 0
+         bestNode = nodesNotConsidered(1);
+     end
+	 [factors2Nodes{k},removedFactors] = FindFactorsForCliques(C,edges,removedFactors,bestNode);
+     edges(bestNode,:) = 0;
+     edges(:,bestNode) = 0;
+     nodesConsidered = [nodesConsidered,bestNode];
+     nodesNotConsidered = 1:length(C.nodes);
+     nodesNotConsidered(nodesConsidered) = [];
 end
 
-% while varCount(end,2) > 0
-%     minVar = varCount(1,1);
-%     for i = 1:length(nodes)
-%         if ismember(minVar, nodes{i})
-%             
-        
-% factorList = cell(length(C.nodes),1);
-% for i = 1:size(varCount,1)
-%     for j = 1:length(C.nodes)
-%         if ismember(varCount(i,1),C.nodes{j})
-%             [factorList{j},factors] = AssignFactors2Cliques(C.nodes{j},factors);
-%         end
-%     end
-% end
-% keyboard
+for i = 1:length(C.nodes)
+    factorIdx = factors2Nodes{i};
+    if ~isempty(factorIdx)
+        P.cliqueList(i) = C.factorList(factorIdx(1));
+    end
+    for j = 2:length(factorIdx)
+        P.cliqueList(i) = FactorProduct(P.cliqueList(i),C.factorList(factorIdx(j)));
+    end
+    miscScope = setdiff(C.nodes{i},P.cliqueList(i).var);
+    if ~isempty(miscScope)
+        unityFactor = struct();
+        unityFactor.var = miscScope;
+        unityFactor.card = C.card(miscScope);
+        unityFactor.val = ones(1,prod(unityFactor.card));
+        if ~isempty(factorIdx)
+            P.cliqueList(i) = FactorProduct(P.cliqueList(i),unityFactor);
+        else
+            P.cliqueList(i) = unityFactor;
+        end
+    end
+end
