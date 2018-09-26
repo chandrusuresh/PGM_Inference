@@ -37,13 +37,44 @@ end;
 
 % initialization
 % you should set them to the correct values in your code
-B.card = [];
-B.val = [];
+B.card = A.card(mapB);
+B.val = [];%zeros(1,prod(B.card));
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % YOUR CODE HERE
 % Correctly set up and populate the factor values of B
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+assignment_A = IndexToAssignment(1:prod(A.card),A.card);
+assignment_B = IndexToAssignment(1:prod(B.card),B.card);
+
+indices = [];
+for i = 1:size(assignment_B,1)
+    assgn_B = assignment_B(i,:);
+    for j = 1:size(assignment_A,1)
+        ind = find(indices == j);
+        % % % Do not look into indices already searched
+        if isempty(ind)
+            assgn_A = assignment_A(j,mapB);
+            if sum(assgn_B-assgn_A) == 0
+                % % % Track indices searched.
+                indices = [indices,j];
+                % % % Thought elegant way is to preallocate B.val to zeros
+                % % % Turns out the test case had negative potentials.
+                % % % This if-else loop structure takes care of that.
+                if isempty(B.val)
+                    B.val(i) = A.val(j);
+                elseif length(B.val) >= i
+                    if A.val(j) > B.val(i)
+                        B.val(i) = A.val(j);
+                    end
+                else
+                    B.val(i) = A.val(j);
+                end
+            end
+        end
+    end
+end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
+
