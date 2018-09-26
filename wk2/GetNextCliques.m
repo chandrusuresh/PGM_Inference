@@ -36,13 +36,15 @@ j = 0;
 for ii = 1:size(messages,2)
     neighbors_1 = find(P.edges(:,ii));
     for jj = 1:length(neighbors_1)
+        % % % If message is already passed, then skip
+        if ~isempty(messages(neighbors_1(jj),ii).var)
+            continue;
+        end        
         neighbors_2 = find(P.edges(:,neighbors_1(jj)));
-        status = zeros(length(neighbors_2),1);
+        status = zeros(length(neighbors_2),1);   
         for k = 1:length(neighbors_2)
             if neighbors_2(k) == ii
-                if ~isempty(messages(neighbors_1(jj),ii).var)
-                    continue;
-                end
+                continue;
             else
                 if ~isempty(messages(neighbors_2(k),neighbors_1(jj)).var)
                     status(k) = 1;
