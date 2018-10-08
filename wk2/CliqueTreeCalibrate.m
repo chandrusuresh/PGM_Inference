@@ -36,24 +36,39 @@ MESSAGES = repmat(struct('var', [], 'card', [], 'val', []), N, N);
 % Remember that you only need an upward pass and a downward pass.
 %
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-totalUpstreamMsgs = sum(sum(P.edges));
+P1 = P;
+if isMax
+    for i = 1:length(P.cliqueList)
+        P1.cliqueList(i).val = log(P.cliqueList(i).val);
+    end
+end
+
+totalUpstreamMsgs = sum(sum(P1.edges));
 msgCount = 0;
 while msgCount < totalUpstreamMsgs
-    [i,j] = GetNextCliques(P, MESSAGES);
-    neighbors_1 = find(P.edges(:,i));
-    MESSAGES(i,j) = P.cliqueList(i);
+    [i,j] = GetNextCliques(P1, MESSAGES);
+    neighbors_1 = find(P1.edges(:,i));
+    MESSAGES(i,j) = P1.cliqueList(i);
     for k = 1:length(neighbors_1)
         if neighbors_1(k) ~= j
             if ~isempty(MESSAGES(i,j).var)
-                MESSAGES(i,j) = FactorProduct(MESSAGES(i,j),MESSAGES(neighbors_1(k),i));
-                MESSAGES(i,j).val = MESSAGES(i,j).val/sum(MESSAGES(i,j).val);
+                if ~isMax
+                    MESSAGES(i,j) = FactorProduct(MESSAGES(i,j),MESSAGES(neighbors_1(k),i));
+                    MESSAGES(i,j).val = MESSAGES(i,j).val/sum(MESSAGES(i,j).val);
+                else
+                    MESSAGES(i,j) = FactorSum(MESSAGES(i,j),MESSAGES(neighbors_1(k),i));
+                end
             end
         end
     end
-    sepSet = intersect(P.cliqueList(i).var,P.cliqueList(j).var);
-    summedOutVars = setdiff(P.cliqueList(i).var,sepSet);
-    MESSAGES(i,j) = FactorMarginalization(MESSAGES(i,j), summedOutVars);
-    MESSAGES(i,j).val = MESSAGES(i,j).val/sum(MESSAGES(i,j).val);
+    sepSet = intersect(P1.cliqueList(i).var,P1.cliqueList(j).var);
+    summedOutVars = setdiff(P1.cliqueList(i).var,sepSet);
+    if ~isMax
+        MESSAGES(i,j) = FactorMarginalization(MESSAGES(i,j), summedOutVars);
+        MESSAGES(i,j).val = MESSAGES(i,j).val/sum(MESSAGES(i,j).val);
+    else
+        MESSAGES(i,j) = FactorMaxMarginalization(MESSAGES(i,j), summedOutVars);
+    end
     msgCount = msgCount + 1;
 end
 
@@ -61,15 +76,19 @@ end
 % YOUR CODE HERE
 %
 % Now the clique tree has been calibrated. 
-% Compute the final potentials for the cliques and place them in P.
+% Compute the final potentials for the cliques and place them in P1.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-final_potential = P.cliqueList;
-for i = 1:length(P.cliqueList)
-    neighbors = find(P.edges(:,i));
+final_potential = P1.cliqueList;
+for i = 1:length(P1.cliqueList)
+    neighbors = find(P1.edges(:,i));
     for j = 1:length(neighbors)
-        final_potential(i) = FactorProduct(final_potential(i),MESSAGES(neighbors(j),i));
+        if ~isMax
+            final_potential(i) = FactorProduct(final_potential(i),MESSAGES(neighbors(j),i));
+        else
+            final_potential(i) = FactorSum(final_potential(i),MESSAGES(neighbors(j),i));
+        end
     end
 end
-P.cliqueList = final_potential;
-
+P1.cliqueList = final_potential;
+P = P1;
 return

@@ -43,8 +43,12 @@ for i = 1:length(ind)
     for j = 1:length(scope)
         if isempty(M(scope(j)).var)
             varsToSumOut = setdiff(scope,scope(j));
-            M(scope(j)) = FactorMarginalization(Pc.cliqueList(node),varsToSumOut);
-            M(scope(j)).val = M(scope(j)).val/sum(M(scope(j)).val);
+            if ~isMax
+                M(scope(j)) = FactorMarginalization(Pc.cliqueList(node),varsToSumOut);
+                M(scope(j)).val = M(scope(j)).val/sum(M(scope(j)).val);
+            else
+                M(scope(j)) = FactorMaxMarginalization(Pc.cliqueList(node),varsToSumOut);                
+            end
         end
     end
 end
