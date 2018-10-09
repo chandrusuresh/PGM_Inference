@@ -53,14 +53,19 @@ LogBS = zeros(1, d);
 %
 % Also you should have only ONE for-loop, as for-loops are VERY slow in matlab
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% if length(V) > 1
+%     keyboard
+% end
+factors = [];
+for i = 1:length(V)
+    factors = [factors,G.var2factors{V(i)}];
+end
 for i = 1:d
-    factors = G.var2factors{V};
+    A_new = A;
+    A_new(V) = i;
     for j = 1:length(factors)
-        var_idx = find(F(factors(j)).var == V);
-        assgn = A(F(factors(j)).var);
-        assgn(1,var_idx) = i;
-        idx = AssignmentToIndex(assgn,F(factors(j)).card);
-        LogBS(1,i) = LogBS(1,i) + log(F(factors(j)).val(idx));
+        assgn = A_new(F(factors(j)).var);
+        LogBS(1,i) = LogBS(1,i) + log(GetValueOfAssignment(F(factors(j)),assgn));
     end
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
