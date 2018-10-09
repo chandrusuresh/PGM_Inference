@@ -76,14 +76,19 @@ if bSwendsenWang
               % Specify the q_{i,j}'s for Swendsen-Wang for variant 1
               %
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+              q_ij = 0.5;
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           elseif strcmp(TransName, 'MHSwendsenWang2')
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
               % YOUR CODE HERE 
               % Specify the q_{i,j}'s for Swendsen-Wang for variant 2
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
+              numerator = 0;
+              den = sum(edge_factor.val);
+              for k = 1:G.card(u(i))
+                numerator = numerator + GetValueOfAssignment(edge_factor,k*ones(1,length(edge_factor.var)));
+              end
+              q_ij = numerator/den;
               %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
           else
               disp('WARNING: unrecognized Swendsen-Wang name');
@@ -125,7 +130,8 @@ for i = 1:max_iter
     % even if you have not coded anything.
     % Please delete this line.
 
-    all_samples(i+1, :) = A0; 
+    all_samples(i+1, :) = Trans(A,G,F);
+    A = all_samples(i+1, :);
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 end
 
